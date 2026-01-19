@@ -1,0 +1,280 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AOD Fitness Pro - Live Cloud</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root { --primary: #007BFF; --success: #28a745; --danger: #dc3545; --dark: #212529; }
+        * { box-sizing: border-box; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; background-color: #f4f7f6; padding-bottom: 30px; }
+
+        /* Login Screen */
+        #login-section { padding: 80px 20px; text-align: center; }
+        .login-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        /* Layout */
+        .top-bar { width: 100%; height: 70px; background: var(--primary); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: fixed; top: 0; z-index: 1200; box-shadow: 0 2px 10px rgba(0,0,0,0.1); color: white; }
+        .category-wrapper { position: fixed; top: 70px; width: 100%; background: white; z-index: 1100; padding: 12px 0; display: flex; justify-content: space-around; border-bottom: 1px solid #eee; }
+        .nav-pill { display: flex; flex-direction: column; align-items: center; color: #888; border: none; background: none; flex: 1; font-size: 11px; font-weight: 600; }
+        .nav-pill i { font-size: 20px; margin-bottom: 4px; }
+        .nav-pill.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+        .main-container { padding: 165px 16px 20px; display: flex; flex-direction: column; gap: 15px; }
+
+        /* Student Cards */
+        .student-card { border-radius: 20px; padding: 18px; color: white; background: linear-gradient(135deg, #1a73e8 0%, #0056b3 100%); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .red-card { background: linear-gradient(135deg, #d93025 0%, #b3261e 100%); }
+        .card-header h2 { margin: 0; font-size: 19px; }
+        .icon-row { display: flex; gap: 12px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px; }
+        .row-btn { width: 45px; height: 45px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 20px; }
+        .btn-wa { color: #25D366; } .btn-call { color: var(--primary); } .btn-sms { color: #FF9800; } .btn-map { color: #EA4335; }
+        .btn-action { margin-left: auto; color: #333; background: #eee; border: none; width: 45px; border-radius: 12px; height: 45px; }
+
+        /* Sidebar Drawer */
+        .side-drawer { position: fixed; top: 0; right: -300px; width: 285px; height: 100%; background: #fff; z-index: 2500; transition: 0.3s ease; padding: 25px; box-shadow: -5px 0 25px rgba(0,0,0,0.15); }
+        .side-drawer.open { right: 0; }
+        .menu-item { padding: 14px 10px; border-bottom: 1px solid #f9f9f9; display: flex; align-items: center; gap: 15px; color: #444; }
+        .menu-item i { color: var(--primary); width: 25px; }
+
+        .hidden { display: none; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 12px; font-weight: 600; margin-top: 10px; cursor: pointer; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; margin-top: 10px; }
+        
+        /* Modals */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; z-index: 2000; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 420px; padding: 25px; border-radius: 20px; display: none; z-index: 6000; max-height: 80vh; overflow-y: auto; }
+        .days-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; background: #f9f9f9; padding: 10px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="login-section">
+        <div class="login-card">
+            <h2 style="color:var(--primary)">AOD PRO LOGIN</h2>
+            <p>अपना मोबाइल नंबर डालें (OTP के लिए)</p>
+            <input type="tel" id="phone-number" placeholder="+91 9876543210">
+            <div id="recaptcha-container"></div>
+            <button class="btn-save" onclick="sendOTP()">SEND OTP</button>
+            <div id="otp-div" class="hidden">
+                <input type="text" id="otp-code" placeholder="6 Digit OTP">
+                <button class="btn-save" style="background:var(--success)" onclick="verifyOTP()">VERIFY & START</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-section" class="hidden">
+        <header class="top-bar">
+            <div style="font-weight:700; font-size:20px;">AOD FITNESS PRO</div>
+            <div onclick="toggleDrawer(true)"><i class="fas fa-bars" style="color:white; font-size:24px;"></i></div>
+        </header>
+
+        <nav class="category-wrapper">
+            <button class="nav-pill active" id="pill-pickup" onclick="setTab('pickup', this)"><i class="fas fa-route"></i><span>Pickup</span></button>
+            <button class="nav-pill" id="pill-cancel" onclick="setTab('cancel', this)"><i class="fas fa-user-slash"></i><span>Cancelled</span></button>
+        </nav>
+
+        <main class="main-container" id="listContainer"></main>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closeAll()"></div>
+    <div class="side-drawer" id="drawer">
+        <div style="font-weight:700; margin-bottom:20px; color:var(--primary); font-size:20px;">Menu</div>
+        <div class="menu-item" onclick="openAdd()"><i class="fas fa-user-plus"></i> Add New Student</div>
+        <div class="menu-item" onclick="openEditList()"><i class="fas fa-tasks"></i> Manage Students</div>
+        <div class="menu-item" onclick="logout()" style="color:var(--danger);"><i class="fas fa-sign-out-alt"></i> Logout</div>
+    </div>
+
+    <div class="modal" id="studentModal">
+        <h3>Student Details</h3>
+        <input type="hidden" id="editId">
+        <input type="text" id="sName" placeholder="नाम">
+        <input type="tel" id="sPhone" placeholder="मोबाइल">
+        <input type="text" id="sArea" placeholder="एरिया">
+        <input type="time" id="sTime">
+        <div class="days-grid" id="daysBox">
+            <label><input type="checkbox" value="Monday" checked> Mon</label>
+            <label><input type="checkbox" value="Tuesday" checked> Tue</label>
+            <label><input type="checkbox" value="Wednesday" checked> Wed</label>
+            <label><input type="checkbox" value="Thursday" checked> Thu</label>
+            <label><input type="checkbox" value="Friday" checked> Fri</label>
+            <label><input type="checkbox" value="Saturday" checked> Sat</label>
+            <label><input type="checkbox" value="Sunday"> Sun</label>
+        </div>
+        <button class="btn-save" onclick="saveToCloud()">SAVE TO CLOUD</button>
+    </div>
+
+    <div class="modal" id="editListModal">
+        <h3>Manage Students</h3>
+        <div id="editListItems"></div>
+        <button class="btn-save" onclick="closeAll()" style="background:#666;">CLOSE</button>
+    </div>
+
+    <script>
+        // FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4nNscCBubnw5AkgR4zqjAeiRpyAsm6KM",
+            authDomain: "aod-fitness-6efbb.firebaseapp.com",
+            projectId: "aod-fitness-6efbb",
+            storageBucket: "aod-fitness-6efbb.firebasestorage.app",
+            messagingSenderId: "183808824968",
+            appId: "1:183808824968:web:83bf9a2803ce3cadec713d"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        let students = [];
+        let cancelledIds = [];
+        let activeTab = 'pickup';
+        let confirmationResult;
+
+        // AUTH FUNCTIONS
+        function sendOTP() {
+            const phone = document.getElementById('phone-number').value;
+            const verifier = new firebase.auth.RecaptchaVerifier('recaptcha-container');
+            auth.signInWithPhoneNumber(phone, verifier).then(res => {
+                confirmationResult = res;
+                document.getElementById('otp-div').classList.remove('hidden');
+            }).catch(err => alert(err.message));
+        }
+
+        function verifyOTP() {
+            const code = document.getElementById('otp-code').value;
+            confirmationResult.confirm(code).then(() => location.reload()).catch(() => alert("गलत OTP!"));
+        }
+
+        // TAB SYSTEM
+        function setTab(tab, el) {
+            activeTab = tab;
+            document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            render();
+        }
+
+        // SAVE DATA
+        function saveToCloud() {
+            const user = auth.currentUser;
+            const id = document.getElementById('editId').value;
+            const data = {
+                name: document.getElementById('sName').value,
+                phone: document.getElementById('sPhone').value,
+                area: document.getElementById('sArea').value,
+                time: document.getElementById('sTime').value,
+                days: Array.from(document.querySelectorAll('#daysBox input:checked')).map(c => c.value),
+                driverId: user.uid,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            const action = id ? db.collection("students").doc(id).update(data) : db.collection("students").add(data);
+            
+            action.then(() => {
+                closeAll();
+                alert("Saved successfully!");
+            });
+        }
+
+        // LOAD DATA
+        function loadData(uid) {
+            db.collection("students").where("driverId", "==", uid).onSnapshot(snap => {
+                students = [];
+                snap.forEach(doc => students.push({id: doc.id, ...doc.data()}));
+                render();
+            });
+        }
+
+        function render() {
+            const container = document.getElementById('listContainer');
+            container.innerHTML = '';
+            const today = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date());
+
+            students.sort((a,b) => a.time.localeCompare(b.time)).forEach(s => {
+                const isScheduled = s.days.includes(today);
+                const isCancelled = cancelledIds.includes(s.id);
+
+                if ((activeTab === 'pickup' && isScheduled && !isCancelled) || (activeTab === 'cancel' && isCancelled)) {
+                    const card = document.createElement('div');
+                    card.className = `student-card ${activeTab === 'cancel' ? 'red-card' : ''}`;
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <h2>${s.name}</h2>
+                            <p><i class="far fa-clock"></i> ${s.time} | ${s.area}</p>
+                        </div>
+                        <div class="icon-row">
+                            <a href="tel:${s.phone}" class="row-btn btn-call"><i class="fas fa-phone-alt"></i></a>
+                            <a href="https://wa.me/91${s.phone}?text=Hello%20${s.name}" class="row-btn btn-wa"><i class="fab fa-whatsapp"></i></a>
+                            <a href="https://www.google.com/maps/search/${encodeURIComponent(s.area)}" class="row-btn btn-map"><i class="fas fa-location-arrow"></i></a>
+                            <button onclick="toggleCancel('${s.id}')" class="btn-action">
+                                <i class="fas ${activeTab === 'cancel' ? 'fa-undo' : 'fa-times'}"></i>
+                            </button>
+                        </div>`;
+                    container.appendChild(card);
+                }
+            });
+        }
+
+        function toggleCancel(id) {
+            if (cancelledIds.includes(id)) cancelledIds = cancelledIds.filter(i => i !== id);
+            else cancelledIds.push(id);
+            render();
+        }
+
+        // MANAGEMENT
+        function openEditList() {
+            const list = document.getElementById('editListItems');
+            list.innerHTML = students.map(s => `
+                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
+                    <span>${s.name}</span>
+                    <span>
+                        <i class="fas fa-edit" onclick="editStu('${s.id}')" style="color:var(--primary); margin-right:15px;"></i>
+                        <i class="fas fa-trash" onclick="deleteStu('${s.id}')" style="color:var(--danger);"></i>
+                    </span>
+                </div>`).join('');
+            openModal('editListModal');
+        }
+
+        function editStu(id) {
+            const s = students.find(x => x.id === id);
+            document.getElementById('editId').value = s.id;
+            document.getElementById('sName').value = s.name;
+            document.getElementById('sPhone').value = s.phone;
+            document.getElementById('sArea').value = s.area;
+            document.getElementById('sTime').value = s.time;
+            document.querySelectorAll('#daysBox input').forEach(c => c.checked = s.days.includes(c.value));
+            closeModal('editListModal'); openModal('studentModal');
+        }
+
+        function deleteStu(id) {
+            if(confirm("Delete this student?")) {
+                db.collection("students").doc(id).delete().then(() => openEditList());
+            }
+        }
+
+        // UI HELPERS
+        function toggleDrawer(v) { document.getElementById('drawer').classList.toggle('open', v); document.getElementById('overlay').style.display = v ? 'block' : 'none'; }
+        function openModal(id) { document.getElementById(id).style.display = 'block'; document.getElementById('overlay').style.display = 'block'; toggleDrawer(false); }
+        function closeAll() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); document.getElementById('overlay').style.display = 'none'; toggleDrawer(false); }
+        function openAdd() { document.getElementById('editId').value = ''; document.getElementById('sName').value = ''; openModal('studentModal'); }
+        function logout() { auth.signOut().then(() => location.reload()); }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('app-section').classList.remove('hidden');
+                loadData(user.uid);
+            }
+        });
+    </script>
+</body>
+</html>
